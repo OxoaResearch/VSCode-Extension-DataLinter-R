@@ -22,8 +22,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) return;
 
-		const text = editor.document.getText(editor.selection);
-		if (!text) {
+		const selectedCode = editor.document.getText(editor.selection);
+		if (!selectedCode) {
 			vscode.window.showWarningMessage("Please select some R code first.");
 			return;
 		}

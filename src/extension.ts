@@ -28,6 +28,26 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
+		//check if we are currently debugging
+		const debugSession = vscode.debug.activeDebugSession;
+		if (debugSession) {
+			try {
+				// Evaluate the selection in the R debug console to get the actual value
+				// We wrap it in jsonlite::toJSON or similar if your server expects JSON
+				const evaluation = await debugSession.customRequest('stackTrace', { threadId: 1 });
+				// const response = await debugSession.evaluate({
+				// 	expression: `jsonlite::toJSON(${selection})`,
+				// 	frameId: evaluation.stackFrames[0].id,
+				// 	context: 'hover'
+				// });
+
+				// dataToSend = response.result;
+			} catch (err) {
+				vscode.window.showWarningMessage("Could not retrieve variable value from debug session. Sending raw text instead.");
+			}
+
+		}
+
 		const config = vscode.workspace.getConfiguration('rServerRunner');
 		const url = config.get<string>('serverUrl') || 'http://localhost:10000/api/lint';
 

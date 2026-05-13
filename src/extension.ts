@@ -33,18 +33,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 		const body = {
-			"options": {
-				"show_na": false,
-				"show_passing": false,
-				"show_stats": true
-			},
-			"context": {
-				"data_header": true,
-				"data_delim": ",",
-				"data_type": "dataset",
-				"data": "data",
-				"code": "",
-				"linters": ["all"]
+			"linter_input": {
+				"options": {
+					"show_na": true,
+					"show_passing": true,
+					"show_stats": true
+				},
+				"context": {
+					"data_header": true,
+					"data_delim": ",",
+					"data_type": "dataset",
+					"data": "a,b,c\n1,2,3\n4,5,6",
+					"code": "",
+					"linters": ["all"]
+				}
 			}
 		}
 

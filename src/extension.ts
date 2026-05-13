@@ -2,6 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import axios from 'axios';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -28,29 +31,79 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		//check if we are currently debugging
-		const debugSession = vscode.debug.activeDebugSession;
-		if (debugSession) {
-			try {
-				// Evaluate the selection in the R debug console to get the actual value
-				// We wrap it in jsonlite::toJSON or similar if your server expects JSON
-				const evaluation = await debugSession.customRequest('stackTrace', { threadId: 1 });
-				// const response = await debugSession.evaluate({
-				// 	expression: `jsonlite::toJSON(${selection})`,
-				// 	frameId: evaluation.stackFrames[0].id,
-				// 	context: 'hover'
-				// });
+		// Extract the R variable name from the selected code
+		// Supports patterns like: data = out1, data <- out1, data=out1, data<-out1
+		// const assignmentMatch = selectedCode.match(/^\s*\w+\s*(?:<-|=)\s*(\w+)\s*$/);
+		// let rVarName: string;
+		// if (assignmentMatch) {
+		// 	// Use the right-hand side variable name (e.g., "out1" from "data = out1")
+		// 	rVarName = assignmentMatch[1];
+		// } else {
+		// 	// Fall back to using the entire selected text as the variable name
+		// 	rVarName = selectedCode.trim();
+		// }
 
-				// dataToSend = response.result;
-			} catch (err) {
-				vscode.window.showWarningMessage("Could not retrieve variable value from debug session. Sending raw text instead.");
-			}
+		const regex = /data = (\w+)/;
+		const matchResult = selectedCode.match(regex);
+		let rVarName = "";
+		if (matchResult) {
+			rVarName = matchResult[1];
+		}
 
+		//let rVarName = "out1";
+
+		// --- Method 1: Terminal + Temp File ---
+		const terminal = vscode.window.activeTerminal;
+		if (!terminal) {
+			vscode.window.showErrorMessage("No active terminal found. Please start an R session in the terminal.");
+			return;
+		}
+
+		// Create a temporary file path to store the CSV output
+		const tempFile = path.join(os.tmpdir(), `r_var_${Date.now()}.csv`); //TODO: use the .vscode folder to store the temp file
+		const rSafePath = tempFile.replace(/\\/g, '/');
+
+		// Send command to the active terminal to write the dataframe to the temporary CSV file
+		terminal.sendText(`tryCatch({ write.csv(${rVarName}, '${rSafePath}', row.names=FALSE) }, error = function(e) { message("Error extracting variable: ", e$message) })`);
+
+		let variableData = "";
+		await vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: `Retrieving dataset '${selectedCode}' from R...`,
+			cancellable: false
+		}, async () => {
+			return new Promise<void>((resolve) => {
+				let retries = 0;
+				const interval = setInterval(() => {
+					if (fs.existsSync(tempFile)) {
+						clearInterval(interval);
+						try {
+							// Read the generated CSV and delete the temp file
+							variableData = fs.readFileSync(tempFile, 'utf8');
+							fs.unlinkSync(tempFile);
+							resolve();
+						} catch (e) {
+							console.error(e);
+							resolve();
+						}
+					} else if (retries > 20) {
+						// Timeout after 10 seconds (20 * 500ms)
+						clearInterval(interval);
+						vscode.window.showErrorMessage("Timeout waiting for R to evaluate variable. Is R running in the terminal?");
+						resolve();
+					}
+					retries++;
+				}, 500);
+			});
+		});
+
+		// If we couldn't retrieve the data, abort the command
+		if (!variableData) {
+			return;
 		}
 
 		const config = vscode.workspace.getConfiguration('rServerRunner');
 		const url = config.get<string>('serverUrl') || 'http://localhost:10000/api/lint';
-
 
 		const body = {
 			"linter_input": {
@@ -63,12 +116,12 @@ export function activate(context: vscode.ExtensionContext) {
 					"data_header": true,
 					"data_delim": ",",
 					"data_type": "dataset",
-					"data": "a,b,c\n1,2,3\n4,5,6",
+					"data": variableData,
 					"code": "",
 					"linters": ["all"]
 				}
 			}
-		}
+		};
 
 		// Show a progress notification
 		await vscode.window.withProgress({
@@ -90,9 +143,11 @@ export function activate(context: vscode.ExtensionContext) {
 					? JSON.stringify(response.data, null, 2)
 					: response.data;
 
-				panel.webview.html = `<html><body><pre>${displayContent}</pre></body></html>`;
+				displayContent.replace('/n', '<br>');
+				panel.webview.html = `<html><body>${displayContent}</body></html>`;
 
 			} catch (error: any) {
+				``
 				vscode.window.showErrorMessage(`Server Error: ${error.message}`);
 			}
 		});

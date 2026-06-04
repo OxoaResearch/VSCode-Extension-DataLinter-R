@@ -60,11 +60,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		// Create a temporary file path to store the CSV output
-		const tempFile = path.join(os.tmpdir(), `r_var_${Date.now()}.csv`); //TODO: use the .vscode folder to store the temp file
+		const tempFile = path.join(os.tmpdir(), `r_var_${Date.now().toString()}.csv`); //TODO: use the .vscode folder to store the temp file
 		const rSafePath = tempFile.replace(/\\/g, '/');
 
 		// Send command to the active terminal to write the dataframe to the temporary CSV file
 		terminal.sendText(`tryCatch({ write.csv(${rVarName}, '${rSafePath}', row.names=FALSE) }, error = function(e) { message("Error extracting variable: ", e$message) })`);
+
 
 		let variableData = "";
 		await vscode.window.withProgress({
@@ -117,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
 					"data_delim": ",",
 					"data_type": "dataset",
 					"data": variableData,
-					"code": "",
+					"code": selectedCode,
 					"linters": ["all"]
 				}
 			}
@@ -141,10 +142,10 @@ export function activate(context: vscode.ExtensionContext) {
 				// Assuming your server returns JSON with a 'result' field
 				const displayContent = typeof response.data === 'object'
 					? JSON.stringify(response.data, null, 2)
-					: response.data;
+					: response.data.linting_outputs;
 
-				displayContent.replace('/n', '<br>');
-				panel.webview.html = `<html><body>${displayContent}</body></html>`;
+				const displayContent2 = displayContent.replace(/\n/g, '<br>');
+				panel.webview.html = `<html><body>${displayContent2}</body></html>`;
 
 			} catch (error: any) {
 				``

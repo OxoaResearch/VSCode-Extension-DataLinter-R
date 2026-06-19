@@ -1,13 +1,19 @@
 {
-  "name": "datalinter-r-cli-runner",
-  "displayName": "DataLinter R CLI Runner",
-  "description": "use the DataLinter tool on the selected text",
-  "version": "0.0.1",
+  "name": "vscode-extension-datalinter-r",
+  "displayName": "VSCode Extension for DataLinter R",
+  "description": "Visual Studio Code Extension for DataLinter R",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OxoaResearch/VSCode-Extension-DataLinter-R.git"
+  },
   "engines": {
     "vscode": "^1.107.0"
   },
   "categories": [
-    "Other"
+    "Linters",
+    "Programming Languages",
+    "R Language"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",

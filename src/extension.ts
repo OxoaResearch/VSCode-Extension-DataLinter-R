@@ -10,7 +10,6 @@ interface LintInput {
   isCodeAvailable: boolean;
   isDataAvailable: boolean;
   dataVariableName?: string;
-
 }
 
 interface LintResult {
@@ -48,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
     let terminal = undefined;
 
     // Prefer the R terminal (e.g. "R Interactive" spawned by the R extension) if it exists
-    const rTerminal = vscode.window.terminals.find(t => {
+    const rTerminal = vscode.window.terminals.find((t) => {
       const name = t.name.toLowerCase();
       return name === "r interactive" || name === "r" || name.startsWith("r ");
     });
@@ -94,7 +93,6 @@ export function activate(context: vscode.ExtensionContext) {
       terminal.sendText(
         `tryCatch({ write.csv(${lintInput.dataVariableName}, '${rSafePath}', row.names=FALSE); writeLines('done', '${rSafeDonePath}') }, error = function(e) { message("Error extracting variable: ", e$message); writeLines(paste0('error:', e$message), '${rSafeDonePath}') })`
       );
-
 
       await vscode.window.withProgress(
         {
@@ -192,6 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           const displayContent = typeof response.data === "object" ? JSON.stringify(response.data?.linting_output, null, 2) : response.data?.linting_output;
 
+          //TODO: put button to copy to cliboard the displayContent
           const results = parseLintOutput(displayContent);
           panel.webview.html = getWebviewContent(results);
         } catch (error: any) {
@@ -230,9 +229,7 @@ function sendInformationMessageToTerminal(terminal: vscode.Terminal, text: strin
   terminal.sendText(`message("\x1b[32m${text}\x1b[0m")`);
 }
 
-
 async function detectWhatToLint(selectedCode: string): Promise<LintInput> {
-
   const parsedSelection = await parseSelection(selectedCode);
 
   let isDataAvailable = false;
@@ -243,7 +240,7 @@ async function detectWhatToLint(selectedCode: string): Promise<LintInput> {
     return {
       isCodeAvailable,
       isDataAvailable
-    }
+    };
   }
 
   isDataAvailable = (parsedSelection.isVariableNameOnly && !!parsedSelection.isDefinedVariableName) || !!parsedSelection.containsDataKeyword;
@@ -255,8 +252,7 @@ async function detectWhatToLint(selectedCode: string): Promise<LintInput> {
     isCodeAvailable,
     isDataAvailable,
     dataVariableName
-  }
-
+  };
 }
 
 interface ParsedSelection {
@@ -284,10 +280,8 @@ async function parseSelection(selectedCode: string): Promise<ParsedSelection | u
       variableName,
       isDefinedVariableName,
       containsDataKeyword: false
-    }
+    };
   }
-
-
 
   const regexData = /data\s*\t*=\s*\t*(\w+)/m;
   const matchDataResult = selectedCode.match(regexData);
@@ -298,8 +292,8 @@ async function parseSelection(selectedCode: string): Promise<ParsedSelection | u
       isVariableNameOnly,
       variableName,
       isDefinedVariableName: undefined,
-      containsDataKeyword: false,
-    }
+      containsDataKeyword: false
+    };
   }
 
   const isDefinedVariableName = await isVariableNameDefinedInRWorkspace(variableName!);
@@ -307,22 +301,17 @@ async function parseSelection(selectedCode: string): Promise<ParsedSelection | u
     isVariableNameOnly,
     variableName,
     isDefinedVariableName: isDefinedVariableName,
-    containsDataKeyword: true,
-  }
+    containsDataKeyword: true
+  };
 }
 
 async function isVariableNameDefinedInRWorkspace(variableName: string): Promise<boolean> {
-  const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
-    "vscode.executeWorkspaceSymbolProvider",
-    variableName
-  );
-  const isDefined = symbols?.some(s => s.name === variableName);
+  const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>("vscode.executeWorkspaceSymbolProvider", variableName);
+  const isDefined = symbols?.some((s) => s.name === variableName);
   return isDefined;
 }
 // This method is called when your extension is deactivated
-export function deactivate() { }
-
-
+export function deactivate() {}
 
 function parseLintOutput(output: string): LintResult[] {
   if (!output) {
@@ -384,7 +373,7 @@ function parseLintOutput(output: string): LintResult[] {
 function getWebviewContent(results: LintResult[]): string {
   const total = results.length;
   const passCount = results.filter((r) => r.status.toLowerCase().includes("pass")).length;
-  const failCount = results.filter((r) => r.status.toLowerCase().includes("fail") || r.status.toLowerCase().includes("errored")).length;
+  const failCount = results.filter((r) => r.status.toLowerCase().includes("fail")).length; //|| r.status.toLowerCase().includes("errored")
   const naCount = total - passCount - failCount;
 
   const tableRows = results
@@ -393,7 +382,7 @@ function getWebviewContent(results: LintResult[]): string {
       const statusLower = r.status.toLowerCase();
       if (statusLower.includes("pass")) {
         statusClass = "badge-status-pass";
-      } else if (statusLower.includes("fail") || statusLower.includes("errored")) {
+      } else if (statusLower.includes("fail")) {
         statusClass = "badge-status-fail";
       } else if (statusLower.includes("warning")) {
         statusClass = "badge-status-warning";
@@ -405,7 +394,7 @@ function getWebviewContent(results: LintResult[]): string {
       let filterStatus = "na";
       if (statusLower.includes("pass")) {
         filterStatus = "pass";
-      } else if (statusLower.includes("fail") || statusLower.includes("errored")) {
+      } else if (statusLower.includes("fail")) {
         filterStatus = "fail";
       }
 
@@ -774,7 +763,7 @@ function getWebviewContent(results: LintResult[]): string {
         </div>
         <div class="metric-card metric-fail">
             <div class="metric-val" id="count-fail">${failCount}</div>
-            <div class="metric-lbl">Failed / Errored</div>
+            <div class="metric-lbl">Failed</div>
         </div>
         <div class="metric-card metric-na">
             <div class="metric-val" id="count-na">${naCount}</div>
@@ -791,7 +780,7 @@ function getWebviewContent(results: LintResult[]): string {
                 <span class="filter-label">Status:</span>
                 <button class="filter-btn active" data-filter-type="status" data-filter-value="all">All</button>
                 <button class="filter-btn" data-filter-type="status" data-filter-value="pass">Pass</button>
-                <button class="filter-btn" data-filter-type="status" data-filter-value="fail">Fail/Error</button>
+                <button class="filter-btn" data-filter-type="status" data-filter-value="fail">Fail</button>
                 <button class="filter-btn" data-filter-type="status" data-filter-value="na">N/A</button>
             </div>
             <div class="filter-group">
@@ -884,7 +873,7 @@ function getWebviewContent(results: LintResult[]): string {
                     const statusLower = item.status.toLowerCase();
                     if (statusLower.includes('pass')) {
                         visiblePass++;
-                    } else if (statusLower.includes('fail') || statusLower.includes('errored')) {
+                    } else if (statusLower.includes('fail')) {
                         visibleFail++;
                     } else {
                         visibleNa++;

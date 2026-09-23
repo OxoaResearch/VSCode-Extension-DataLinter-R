@@ -373,7 +373,7 @@ function parseLintOutput(output: string): LintResult[] {
 function getWebviewContent(results: LintResult[]): string {
   const total = results.length;
   const passCount = results.filter((r) => r.status.toLowerCase().includes("pass")).length;
-  const failCount = results.filter((r) => r.status.toLowerCase().includes("fail")).length; //|| r.status.toLowerCase().includes("errored")
+  const failCount = results.filter((r) => r.status.toLowerCase().includes("fail")).length;
   const naCount = total - passCount - failCount;
 
   const tableRows = results
@@ -384,11 +384,14 @@ function getWebviewContent(results: LintResult[]): string {
         statusClass = "badge-status-pass";
       } else if (statusLower.includes("fail")) {
         statusClass = "badge-status-fail";
-      } else if (statusLower.includes("warning")) {
-        statusClass = "badge-status-warning";
       }
 
-      const severityClass = r.severity.toLowerCase() === "important" ? "badge-severity-important" : "badge-severity-info";
+      let severityClass = "badge-severity-info";
+      if (r.severity.toLowerCase() === "important") {
+        severityClass = "badge-severity-important";
+      } else if (r.severity.toLowerCase() === "warning") {
+        severityClass = "badge-severity-warning";
+      }
 
       // Standardize status value for client filtering
       let filterStatus = "na";
@@ -426,8 +429,8 @@ function getWebviewContent(results: LintResult[]): string {
             --color-fail-text: #f87171;
             --color-na-bg: rgba(107, 114, 128, 0.15);
             --color-na-text: #9ca3af;
-            --color-warning-bg: rgba(245, 158, 11, 0.15);
-            --color-warning-text: #fbbf24;
+            --color-warning-bg: rgba(229, 255, 0, 0.52);
+            --color-warning-text: #201303dc;
             
             --color-important-bg: rgba(249, 115, 22, 0.2);
             --color-important-text: #fdba74;
@@ -453,8 +456,8 @@ function getWebviewContent(results: LintResult[]): string {
             --color-fail-text: #dc2626;
             --color-na-bg: rgba(107, 114, 128, 0.15);
             --color-na-text: #4b5563;
-            --color-warning-bg: rgba(217, 119, 6, 0.15);
-            --color-warning-text: #d97706;
+            --color-warning-bg: rgba(229, 255, 0, 0.52);
+            --color-warning-text: #201303dc;
 
             --color-important-bg: rgba(234, 88, 12, 0.12);
             --color-important-text: #ea580c;
@@ -704,10 +707,6 @@ function getWebviewContent(results: LintResult[]): string {
             background: var(--color-na-bg);
             color: var(--color-na-text);
         }
-        .badge-status-warning {
-            background: var(--color-warning-bg);
-            color: var(--color-warning-text);
-        }
 
         .badge-severity-important {
             background: var(--color-important-bg);
@@ -718,6 +717,12 @@ function getWebviewContent(results: LintResult[]): string {
             background: var(--color-info-bg);
             color: var(--color-info-text);
             border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-severity-warning {
+            background: var(--color-warning-bg);
+            color: var(--color-warning-text);
+            border: 1px solid hsla(56, 91%, 60%, 0.30);
         }
 
         .code-font {
@@ -753,10 +758,6 @@ function getWebviewContent(results: LintResult[]): string {
     </div>
 
     <div class="metrics-grid">
-        <div class="metric-card metric-total">
-            <div class="metric-val" id="count-total">${total}</div>
-            <div class="metric-lbl">Total Checks</div>
-        </div>
         <div class="metric-card metric-pass">
             <div class="metric-val" id="count-pass">${passCount}</div>
             <div class="metric-lbl">Passed</div>
@@ -768,7 +769,14 @@ function getWebviewContent(results: LintResult[]): string {
         <div class="metric-card metric-na">
             <div class="metric-val" id="count-na">${naCount}</div>
             <div class="metric-lbl">Not Available</div>
+        </div>    
+        <!-- disabled for now
         </div>
+            <div class="metric-card metric-total">
+            <div class="metric-val" id="count-total">${total}</div>
+            <div class="metric-lbl">Total Checks</div>
+        </div>
+        -->
     </div>
 
     <div class="search-filter-container">
@@ -787,13 +795,14 @@ function getWebviewContent(results: LintResult[]): string {
                 <span class="filter-label">Severity:</span>
                 <button class="filter-btn active" data-filter-type="severity" data-filter-value="all">All</button>
                 <button class="filter-btn" data-filter-type="severity" data-filter-value="important">Important</button>
+                <button class="filter-btn" data-filter-type="severity" data-filter-value="warning">Warning</button>
                 <button class="filter-btn" data-filter-type="severity" data-filter-value="info">Info</button>
             </div>
         </div>
     </div>
 
     <div class="status-text" id="displaying-text">
-        Showing ${total} of ${total} checks
+        Showing ${total} of ${total} results
     </div>
 
     <div class="results-table-wrapper">
@@ -884,13 +893,13 @@ function getWebviewContent(results: LintResult[]): string {
             });
 
             // Update status text
-            displayingText.textContent = \`Showing \&nbsp;\${visibleCount} of \${results.length} checks\`;
+            displayingText.textContent = \`Showing \${visibleCount} of \${results.length} results\`;
 
-            // Update counter numbers
-            document.getElementById('count-total').textContent = visibleCount;
-            document.getElementById('count-pass').textContent = visiblePass;
-            document.getElementById('count-fail').textContent = visibleFail;
-            document.getElementById('count-na').textContent = visibleNa;
+            // Update counter numbers - disabled
+            //document.getElementById('count-total').textContent = visibleCount;
+            //document.getElementById('count-pass').textContent = visiblePass;
+            //document.getElementById('count-fail').textContent = visibleFail;
+            //document.getElementById('count-na').textContent = visibleNa;
         }
     </script>
 </body>

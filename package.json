@@ -42,6 +42,11 @@
           "type": "string",
           "default": "http://localhost:10000/api/lint",
           "description": "The local endpoint for the Data Linter for R server"
+        },
+        "rServerRunner.outputHttpMessagesToConsole": {
+          "type": "boolean",
+          "default": false,
+          "description": "outputs to console all HTTP requests and responses (for troubleshooting purposes)"
         }
       }
     }

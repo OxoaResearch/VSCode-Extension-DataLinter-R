@@ -56,6 +56,10 @@ This extension contributes the following settings:
   * **Default**: `http://localhost:10000/api/lint`
   * **Description**: The endpoint of the running HTTP-based DataLinter server.
 
+* `rServerRunner.outputHttpMessagesToConsole` (Type: `boolean`):
+  * **Default**: `false`
+  * **Description**: Outputs to console all HTTP requests and responses (for troubleshooting purposes).
+
 ---
 
 ## 🛠️ Development & Building

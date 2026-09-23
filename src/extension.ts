@@ -27,6 +27,8 @@ export function activate(context: vscode.ExtensionContext) {
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "datalinter-r-cli-runner" is now active!');
 
+  setupAxiosLogging(context);
+
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
@@ -312,6 +314,144 @@ async function isVariableNameDefinedInRWorkspace(variableName: string): Promise<
 }
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
+function isHttpLoggingEnabled(): boolean {
+  const config = vscode.workspace.getConfiguration("rServerRunner");
+  const value = config.get<boolean | string>("outputHttpMessagesToConsole");
+  return value === true || value === "true";
+}
+
+let outputChannel: vscode.OutputChannel | undefined;
+
+function getOutputChannel(): vscode.OutputChannel {
+  if (!outputChannel) {
+    outputChannel = vscode.window.createOutputChannel("DataLinter HTTP");
+  }
+  return outputChannel;
+}
+
+function formatHeaders(headers: any): any {
+  if (!headers) {
+    return headers;
+  }
+  if (typeof headers.toJSON === "function") {
+    return headers.toJSON();
+  }
+  return headers;
+}
+
+function formatPayload(data: any): string {
+  if (data === undefined || data === null) {
+    return String(data);
+  }
+  if (typeof data === "string") {
+    try {
+      const parsed = JSON.parse(data);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return data;
+    }
+  }
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return String(data);
+  }
+}
+
+function logHttpOutput(...args: any[]): void {
+  console.log(...args);
+  const channel = getOutputChannel();
+  const formatted = args.map((arg) => (typeof arg === "string" ? arg : formatPayload(arg))).join(args.length > 1 && typeof args[1] === "object" ? "\n" : " ");
+  channel.appendLine(formatted);
+}
+
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
+let isAxiosLoggingConfigured = false;
+
+function setupAxiosLogging(context?: vscode.ExtensionContext): void {
+  if (context) {
+    context.subscriptions.push(getOutputChannel());
+  }
+  if (isAxiosLoggingConfigured) {
+    return;
+  }
+  isAxiosLoggingConfigured = true;
+
+  axios.interceptors.request.use(
+    (requestConfig) => {
+      if (isHttpLoggingEnabled()) {
+        const timestamp = getTimestamp();
+        getOutputChannel().show(true);
+        const fullUrl = `${requestConfig.baseURL ? requestConfig.baseURL : ""}${requestConfig.url || ""}`;
+        logHttpOutput(`=== HTTP Request [${timestamp}] ===`);
+        logHttpOutput(`Method: ${requestConfig.method ? requestConfig.method.toUpperCase() : "GET"}`);
+        logHttpOutput(`URL: ${fullUrl}`);
+        if (requestConfig.headers) {
+          logHttpOutput("Headers:", formatHeaders(requestConfig.headers));
+        }
+        if (requestConfig.data !== undefined) {
+          logHttpOutput("Body:", requestConfig.data);
+        }
+        logHttpOutput("====================");
+      }
+      return requestConfig;
+    },
+    (error) => {
+      if (isHttpLoggingEnabled()) {
+        const timestamp = getTimestamp();
+        getOutputChannel().show(true);
+        logHttpOutput(`=== HTTP Request Error [${timestamp}] ===`);
+        logHttpOutput(error);
+        logHttpOutput("==========================");
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  axios.interceptors.response.use(
+    (response) => {
+      if (isHttpLoggingEnabled()) {
+        const timestamp = getTimestamp();
+        logHttpOutput(`=== HTTP Response [${timestamp}] ===`);
+        logHttpOutput(`Status: ${response.status} ${response.statusText}`);
+        if (response.headers) {
+          logHttpOutput("Headers:", formatHeaders(response.headers));
+        }
+        if (response.data !== undefined) {
+          logHttpOutput("Body:", response.data);
+        }
+        logHttpOutput("=====================");
+      }
+      return response;
+    },
+    (error) => {
+      if (isHttpLoggingEnabled()) {
+        const timestamp = getTimestamp();
+        getOutputChannel().show(true);
+        logHttpOutput(`=== HTTP Response (Error) [${timestamp}] ===`);
+        if (error.response) {
+          logHttpOutput(`Status: ${error.response.status} ${error.response.statusText}`);
+          if (error.response.headers) {
+            logHttpOutput("Headers:", formatHeaders(error.response.headers));
+          }
+          if (error.response.data !== undefined) {
+            logHttpOutput("Body:", error.response.data);
+          }
+        } else if (error.request) {
+          logHttpOutput(`No HTTP response received from server. Error: ${error.message}`);
+        } else {
+          logHttpOutput(`HTTP Request configuration error: ${error.message}`);
+        }
+        logHttpOutput("=============================");
+      }
+      return Promise.reject(error);
+    }
+  );
+}
 
 function parseLintOutput(output: string): LintResult[] {
   if (!output) {
